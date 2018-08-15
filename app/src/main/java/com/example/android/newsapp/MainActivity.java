@@ -1,203 +1,151 @@
 package com.example.android.newsapp;
 
-
-import android.os.AsyncTask;
+import android.app.Activity;
+import android.app.LoaderManager;
+import android.app.LoaderManager.LoaderCallbacks;
+import android.content.Context;
+import android.content.Intent;
+import android.content.Loader;
+import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ListView;
 import android.widget.TextView;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import java.util.ArrayList;
+import java.util.List;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.text.SimpleDateFormat;
 
-/**
- * Displays information about a single earthquake.
- */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements LoaderCallbacks<List<NewsArticle>> {
 
-    /** Tag for the log messages */
-    public static final String LOG_TAG = MainActivity.class.getSimpleName();
+    private static final String LOG_TAG = MainActivity.class.getName();
 
-    /** URL to query the USGS dataset for earthquake information */
+    /** URL for news data from the Guardian */
     private static final String GUARDIAN_REQUEST_URL =
             "https://content.guardianapis.com/search?api-key=531a9fe4-715c-48dd-ae74-8532372d338f";
+
+    /**
+     * Constant value for the news loader ID. We can choose any integer.
+     * This really only comes into play if you're using multiple loaders.
+     */
+    private static final int NEWS_LOADER_ID = 1;
+
+    /** Adapter for the list of news */
+    private NewsAdapter mAdapter;
+    private TextView mEmptyStateTextView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.i(LOG_TAG,"TEST: News Activity onCreate() called");
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.list_view);
+        setContentView(R.layout.activity_main);
 
-        // Kick off an  to perform the network request
-        NewsAsyncTask task = new NewsAsyncTask();
-        task.execute();
-    }
+        // Find a reference to the {@link ListView} in the layout
+        ListView newsListView = (ListView) findViewById(R.id.list);
 
-    /**
-     * Update the screen to display information from the given {NewsArticle}.
-     */
-    private void updateUi(NewsArticle news) {
-        // Display the earthquake title in the UI
-        TextView titleTextView = (TextView) findViewById(R.id.section_name);
-        titleTextView.setText(news.section_name);
+        // Create a new adapter that takes an empty list of news as input
+        mAdapter = new NewsAdapter(this, new ArrayList<NewsArticle>());
 
-        // Display the earthquake date in the UI
-        TextView dateTextView = (TextView) findViewById(R.id.web_title);
-        dateTextView.setText(news.web_title);
+        // Set the adapter on the {@link ListView}
+        // so the list can be populated in the user interface
+        newsListView.setAdapter(mAdapter);
 
-        // Display whether or not there was a tsunami alert in the UI
-        TextView tsunamiTextView = (TextView) findViewById(R.id.date);
-        tsunamiTextView.setText(getDateString(news.date));
-    }
-    /**
-     * Returns a formatted date and time string for when the earthquake happened.
-     */
-    private String getDateString(long timeInMilliseconds) {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'at' THH:mm:ss z");
-        return formatter.format(timeInMilliseconds);
-    }
+        mEmptyStateTextView = (TextView) findViewById(R.id.empty_view);
+        newsListView.setEmptyView(mEmptyStateTextView);
 
-    /**
-     * {NewsAsyncTask} to perform the network request on a background thread, and then
-     * update the UI with the first earthquake in the response.
-     */
-    private class NewsAsyncTask extends AsyncTask<URL, Void, NewsArticle> {
+        // Set an item click listener on the ListView, which sends an intent to a web browser
+        // to open a website with more information about the selected news.
+        newsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                // Find the current news that was clicked on
+                NewsArticle currentNews = mAdapter.getItem(position);
 
-        @Override
-        protected NewsArticle doInBackground(URL... urls) {
-            // Create URL object
-            URL url = createUrl(GUARDIAN_REQUEST_URL);
+                // Convert the String URL into a URI object (to pass into the Intent constructor)
+                Uri newsUri = Uri.parse(currentNews.getUrl());
 
-            // Perform HTTP request to the URL and receive a JSON response back
-            String jsonResponse = "";
-            try {
-                jsonResponse = makeHttpRequest(url);
-            } catch (IOException e) {
-                // TODO Handle the IOException
+                // Create a new intent to view the news URI
+                Intent websiteIntent = new Intent(Intent.ACTION_VIEW, newsUri);
+
+                // Send the intent to launch a new activity
+                startActivity(websiteIntent);
             }
+        });
 
-            // Extract relevant fields from the JSON response and create an {@link Event} object
-            NewsArticle news = extractResultsFromJson(jsonResponse);
+        // Get a reference to the ConnectivityManager to check state of network connectivity
+        ConnectivityManager connMgr = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE);
 
-            // Return the {@link Event} object as the result fo the {@link TsunamiAsyncTask}
-            return news;
-        }
+        // Get details on the currently active default data network
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
 
-        /**
-         * Update the screen with the given earthquake (which was the result of the
-         * {NewsAsyncTask}).
-         */
-        @Override
-        protected void onPostExecute(NewsArticle news) {
-            if (news == null) {
-                return;
-            }
+        // If there is a network connection, fetch data
+        if (networkInfo != null && networkInfo.isConnected()) {
+            // Get a reference to the LoaderManager, in order to interact with loaders.
+            LoaderManager loaderManager = getLoaderManager();
 
-            updateUi(news);
-        }
+            // Initialize the loader. Pass in the int ID constant defined above and pass in null for
+            // the bundle. Pass in this activity for the LoaderCallbacks parameter (which is valid
+            // because this activity implements the LoaderCallbacks interface).
+            loaderManager.initLoader(NEWS_LOADER_ID, null, this);
+        } else {
+            // Otherwise, display error
+            // First, hide loading indicator so error message will be visible
+            View loadingIndicator = findViewById(R.id.loading_indicator);
+            loadingIndicator.setVisibility(View.GONE);
 
-        /**
-         * Returns new URL object from the given string URL.
-         */
-        private URL createUrl(String stringUrl) {
-            URL url = null;
-            try {
-                url = new URL(stringUrl);
-            } catch (MalformedURLException exception) {
-                Log.e(LOG_TAG, "Error with creating URL", exception);
-                return null;
-            }
-            return url;
-        }
-
-        /**
-         * Make an HTTP request to the given URL and return a String as the response.
-         */
-        private String makeHttpRequest(URL url) throws IOException {
-            String jsonResponse = "";
-            HttpURLConnection urlConnection = null;
-            InputStream inputStream = null;
-            try {
-                urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setRequestMethod("GET");
-                urlConnection.setReadTimeout(10000 /* milliseconds */);
-                urlConnection.setConnectTimeout(15000 /* milliseconds */);
-                urlConnection.connect();
-                if (urlConnection.getResponseCode()==200) {
-                    inputStream = urlConnection.getInputStream();
-                    jsonResponse = readFromStream(inputStream);
-                }else{
-                    Log.e(LOG_TAG, "Error response code: "+urlConnection.getResponseCode());
-                }
-            } catch (IOException e) {
-                Log.e(LOG_TAG, "Problem retrieving the news article JSON results.", e);
-
-                // TODO: Handle the exception
-            } finally {
-                if (urlConnection != null) {
-                    urlConnection.disconnect();
-                }
-                if (inputStream != null) {
-                    // function must handle java.io.IOException here
-                    inputStream.close();
-                }
-            }
-            return jsonResponse;
-        }
-
-        /**
-         * Convert the {@link InputStream} into a String which contains the
-         * whole JSON response from the server.
-         */
-        private String readFromStream(InputStream inputStream) throws IOException {
-            StringBuilder output = new StringBuilder();
-            if (inputStream != null) {
-                InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charset.forName("UTF-8"));
-                BufferedReader reader = new BufferedReader(inputStreamReader);
-                String line = reader.readLine();
-                while (line != null) {
-                    output.append(line);
-                    line = reader.readLine();
-                }
-            }
-            return output.toString();
-        }
-
-        /**
-         * Return an {NewsArticle} object by parsing out information
-         * about the first earthquake from the input earthquakeJSON string.
-         */
-        private NewsArticle extractResultsFromJson(String newsJSON) {
-            try {
-                JSONObject baseJsonResponse = new JSONObject(newsJSON);
-                JSONArray resultsArray = baseJsonResponse.getJSONArray("results");
-
-                // If there are results in the results array
-                if (resultsArray.length() > 0) {
-                    // Extract out the first feature (which is an earthquake)
-                    JSONObject properties = resultsArray.getJSONObject(0);
-
-                    // Extract out the title, time, and tsunami values
-                    String section_name = properties.getString("sectionName");
-                    String web_title = properties.getString("webTitle");
-                    int date = properties.getInt("webPublicationDate");
-
-                    // Create a new {@link Event} object
-                    return new NewsArticle(section_name, web_title, date);
-                }
-            } catch (JSONException e) {
-                Log.e(LOG_TAG, "Problem parsing the news article JSON results", e);
-            }
-            return null;
+            // Update empty state with no connection error message
+            mEmptyStateTextView.setText(R.string.no_internet_connection);
         }
     }
+
+
+    @Override
+    public Loader<List<NewsArticle>> onCreateLoader(int i, Bundle bundle) {
+        // Create a new loader for the given URL
+        Log.i(LOG_TAG,"TEST: onCreateLoader() is called ...");
+        return new NewsLoader(this, GUARDIAN_REQUEST_URL);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<List<NewsArticle>> loader, List<NewsArticle> news) {
+        Log.i(LOG_TAG,"TEST: onLoadFinished() is called ...");
+
+        // Hide loading indicator because the data has been loaded
+        View loadingIndicator = findViewById(R.id.loading_indicator);
+        loadingIndicator.setVisibility(View.GONE);
+        if (news != null && !news.isEmpty()) {
+            // If there is a valid list of {@link News}s, then add them to the adapter's
+            // data set. This will trigger the ListView to update.
+            mAdapter.addAll(news);
+            Log.i(LOG_TAG,"TEST: onLoadFinished() is called ...news is not null");
+        }else {
+            // Set empty state text to display "No news found."
+            mEmptyStateTextView.setText(R.string.no_articles);
+            mEmptyStateTextView.setVisibility(View.VISIBLE);
+            Log.i(LOG_TAG,"TEST: onLoadFinished() is called ...news is null");
+            // Clear the adapter of previous news data
+            mAdapter.clear();
+        }
+
+    }
+
+    @Override
+    public void onLoaderReset(Loader<List<NewsArticle>> loader) {
+        Log.i(LOG_TAG,"TEST: onLoadReset() is called ...");
+        // Loader reset, so we can clear out our existing data.
+        mAdapter.clear();
+    }
+
+
 }

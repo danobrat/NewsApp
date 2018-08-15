@@ -3,24 +3,51 @@ package com.example.android.newsapp;
 public class NewsArticle {
 
     /** Section the article is within the news site */
-    public final String section_name;
+    public final String mSection;
 
     /** Title of the news article */
-    public final String web_title;
+    public final String mWeb;
 
     /** Date of the news article */
-    public final int date;
+    public long mDate;
+
+    /**URL link*/
+    public final String mUrl;
 
     /**
      * Constructs a new news article.
-     *
-     * @param eventTitle is the title of the news article
-     * @param eventTime is the section the article is within the news site
-     * @param eventTsunamiAlert is the date of the news article
      */
-    public NewsArticle (String eventName, String eventTitle, int eventDate) {
-        section_name = eventName;
-        web_title = eventTitle;
-        date = eventDate;
+    public NewsArticle (String eventName, String eventTitle, long eventDate, String url) {
+        mSection = eventName;
+        mWeb = eventTitle;
+        mDate = eventDate;
+        mUrl= url;
+    }
+
+    /**
+     * Returns the magnitude of the earthquake.
+     */
+    public String getSection() {
+        return mSection;
+    }
+
+    /**
+     * Returns the location of the earthquake.
+     */
+    public String getWeb() {
+        return mWeb;
+    }
+
+    /**
+     * Returns the time of the earthquake.
+     */
+    public long getDate() {
+        return mDate;
+    }
+    /**
+     * Returns the url of the earthquake.
+     */
+    public String getUrl() {
+        return mUrl;
     }
 }
