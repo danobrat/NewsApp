@@ -24,7 +24,9 @@ import java.util.List;
  */
 public final class QueryUtils {
 
-    /** Tag for the log messages */
+    /**
+     * Tag for the log messages
+     */
     private static final String LOG_TAG = QueryUtils.class.getSimpleName();
 
     /**
@@ -155,9 +157,10 @@ public final class QueryUtils {
 
             // Extract the JSONArray associated with the key called "features",
             // which represents a list of features (or earthquakes).
-            JSONObject responseJSONObject= baseJsonResponse.getJSONObject("response");
+            JSONArray featureArray = baseJsonResponse.getJSONObject("response").getJSONArray("results");
+            //JSONObject responseJSONObject= baseJsonResponse.getJSONObject("response");
 
-            JSONArray featureArray= responseJSONObject.getJSONArray("results");
+            //JSONArray featureArray= responseJSONObject.getJSONArray("results");
 
             // For each earthquake in the earthquakeArray, create an {@link Earthquake} object
             for (int i = 0; i < featureArray.length(); i++) {
@@ -188,7 +191,7 @@ public final class QueryUtils {
             Log.e("QueryUtils", "Problem parsing the earthquake JSON results", e);
         }
 
-       List<NewsArticle> news = new ArrayList<>();
+        List<NewsArticle> news = new ArrayList<>();
         return news;
     }
 

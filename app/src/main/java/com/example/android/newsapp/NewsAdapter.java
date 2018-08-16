@@ -33,7 +33,7 @@ public class NewsAdapter extends ArrayAdapter<NewsArticle> {
 
 
             // Create a new Date object from the time in milliseconds of the earthquake
-            Date dateObject = new Date(currentNews.getDate());
+            // Date dateObject = new Date(currentNews.getDate());
 
             // Find the TextView with view ID magnitude
             TextView sectionView = (TextView) listItemView.findViewById(R.id.section_name);
@@ -46,16 +46,16 @@ public class NewsAdapter extends ArrayAdapter<NewsArticle> {
             webView.setText(currentNews.getWeb());
 
             // Find the TextView with view ID date
-           // TextView dateView = (TextView) listItemView.findViewById(R.id.date);
+            // TextView dateView = (TextView) listItemView.findViewById(R.id.date);
             // Display the date of the current earthquake in that TextView
-           // dateView.setText(currentNews.getDate());
+            // dateView.setText(currentNews.getDate());
 
 
             // Find the TextView with view ID location
             TextView urlView = (TextView) listItemView.findViewById(R.id.url);
             // Display the location of the current earthquake in that TextView
             webView.setText(currentNews.getUrl());
-            }
+        }
         // Return the list item view that is now showing the appropriate data
         return listItemView;
     }

@@ -2,26 +2,32 @@ package com.example.android.newsapp;
 
 public class NewsArticle {
 
-    /** Section the article is within the news site */
+    /**
+     * Section the article is within the news site
+     */
     public final String mSection;
 
-    /** Title of the news article */
+    /**
+     * Title of the news article
+     */
     public final String mWeb;
-
-    /** Date of the news article */
-    public long mDate;
-
-    /**URL link*/
+    /**
+     * URL link
+     */
     public final String mUrl;
+    /**
+     * Date of the news article
+     */
+    public long mDate;
 
     /**
      * Constructs a new news article.
      */
-    public NewsArticle (String eventName, String eventTitle, long eventDate, String url) {
+    public NewsArticle(String eventName, String eventTitle, long eventDate, String url) {
         mSection = eventName;
         mWeb = eventTitle;
         mDate = eventDate;
-        mUrl= url;
+        mUrl = url;
     }
 
     /**
@@ -44,6 +50,7 @@ public class NewsArticle {
     public long getDate() {
         return mDate;
     }
+
     /**
      * Returns the url of the earthquake.
      */
